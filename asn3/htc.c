@@ -2,12 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <getopt.h>
 #include "udp_client.h"
-#include "udp_sockets.h"
 #include "syslog.h";
 #include "stdbool.h";
+#include "udp_sockets.h"
 
-int main() {
+int main(int argc, char **argv) {
     openlog("rftp", LOG_PERROR | LOG_PID | LOG_NDELAY, LOG_USER);
     setlogmask(LOG_UPTO(LOG_DEBUG));
 
@@ -36,6 +37,9 @@ int main() {
 
         switch (c) {
             case 'p':
+                // TODO: Not explicitly check arg names
+                // Get arg name, then value
+                // Maybe use a linked list of strings?
                 *temp = strtok(optarg, "=");
                 if (strcmp(temp, "name") == 0)
                 {
@@ -71,8 +75,8 @@ int main() {
         syslog(LOG_DEBUG, "Server or path not specified!");
         exit(EXIT_FAILURE);
     }
-    *serverStr = argv[optind];
-    *path = argv[optind+1];
+    serverStr = argv[optind];
+    path = argv[optind+1];
 
     host_t server;   // Server address
     message_t* msg;  // Message to send/receive
@@ -85,16 +89,48 @@ int main() {
     msg->length = strlen("hello");
     memcpy(msg->buffer, "hello", msg->length);
 
-    // Send the message to the server, and free its memory
-    int retval = send_message(sockfd, msg, &server);
-    free(msg);
+    // Build up header string
+    size_t request_len = strlen("GET  HTTP/1.1\r\nHOST: \r\n\r\n")
+            + strlen(serverStr) + strlen(path);
+    char *request = malloc(sizeof(char)*request_len);
+    sprintf(request, "GET %s HTTP/1.1\r\nHOST: %s\r\n\r\n", path, serverStr);
 
-    // If we couldn't send the message, exit the program
-    if (retval == -1) {
-        close(sockfd);
-        perror("Unable to send to socket");
-        exit(EXIT_FAILURE);
+    // Null strings that we don't need anymore
+    // Don't free program args...
+    if (path)
+    {
+        path = NULL;
     }
+    if (serverStr)
+    {
+        serverStr = NULL;
+    }
+
+    // TODO: Figure out where the get arguments actually go
+    // Just append for a get request???
+
+    int chars_sent = 0;
+    int chars_total = 0;
+    for (chars_total = 0; chars_total < request_len; chars_total += chars_sent)
+    {
+        msg->length = UDP_MSS < request_len - chars_total ? UDP_MSS : request_len - chars_total;
+        if (msg->length == 0)
+            break;
+        memcpy(msg->buffer, &request[chars_total], (size_t)msg->length);
+        // TODO: Check that the return value is actually the number of bytes sent
+        chars_sent = send_message(sockfd, msg, &server);
+        // If we couldn't send the message, exit the program
+        if (chars_sent == -1) {
+            close(sockfd);
+            perror("Unable to send to socket"); // TODO: Log with syslog! (Andrew: I've done it before, I'll do it...)
+            exit(EXIT_FAILURE);
+        }
+        if (chars_sent == 0)
+            break;
+    }
+
+    // Free the message
+    free(msg);
 
     // Read the server's reply
     msg = receive_message(sockfd, &server);
@@ -103,6 +139,11 @@ int main() {
         // Add NULL terminator and print reply
         msg->buffer[msg->length] = '\0';
         printf("Reply from server %s: %s\n", server.friendly_ip, msg->buffer);
+
+        // TODO: Check the return code
+        // If 2XX, print the message
+
+        // If !2XX, print "Error: status code XXX"
 
         // Free the memory allocated to the message
         free(msg);
