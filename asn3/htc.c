@@ -16,18 +16,18 @@ int main(int argc, char **argv) {
     char c;
     char* port = "80"; // standard HTTP port
     char* serverStr = NULL;
-    char *name = NULL, *lname = NULL, *level = NULL;
-    char* temp = NULL;
     char* type = NULL;
     char* path = NULL;
 
-    typedef struct {
-    	char* key;
-    	char* value;
-    } KeyValue;
+    // typedef struct {
+    // 	char* key;
+    // 	char* value;
+    // } KeyValue;
 
-    KeyValue keyValue[100];
-    int keyValueIndex = 0;
+    //KeyValue keyValue[100];
+
+    char* params[100];
+    int index = 0;
     int paramsLength = 0;
 
     while (true) {
@@ -46,12 +46,14 @@ int main(int argc, char **argv) {
 
         switch (c) {
             case 'p':
-                keyValue[keyValueIndex].key   = strtok(optarg, "=");
-                keyValue[keyValueIndex].value = strtok(optarg, "=");
-                paramsLength += strlen(keyValue[keyValueIndex].key);
-                paramsLength += strlen(keyValue[keyValueIndex].value);
-                paramsLength += 1; // for the '=' operator
-                keyValueIndex++;
+            	params[index] = optarg;
+            	paramsLength += strlen(params[index]);
+                // keyValue[keyValueIndex].key   = strtok(optarg, "=");
+                // keyValue[keyValueIndex].value = strtok(optarg, "=");
+                // paramsLength += strlen(keyValue[keyValueIndex].key);
+                //paramsLength += strlen(keyValue[keyValueIndex].value);
+                //paramsLength++; // for the '=' operator
+                index++;
                 break;
             case 't':
                 *type = optarg;
@@ -78,14 +80,52 @@ int main(int argc, char **argv) {
 
     // Create a message, and initialize its contents
     msg = create_message();
-    msg->length = strlen("hello");
-    memcpy(msg->buffer, "hello", msg->length);
+    //msg->length = strlen("hello");
+    //memcpy(msg->buffer, "hello", msg->length);
 
     // Build up header string
-    size_t request_len = strlen("GET  HTTP/1.1\r\nHOST: \r\n\r\n")
-            + strlen(serverStr) + strlen(path);
-    char *request = malloc(sizeof(char)*request_len);
-    sprintf(request, "GET %s HTTP/1.1\r\nHOST: %s\r\n\r\n", path, serverStr);
+    // size_t request_len = strlen("GET  HTTP/1.1\r\nHOST: \r\n\r\n")
+    //         + strlen(serverStr) + strlen(path);
+    // char *request = malloc(sizeof(char)*request_len);
+    // sprintf(request, "GET %s HTTP/1.1\r\nHOST: %s\r\n\r\n", path, serverStr);
+
+
+    // TODO: Figure out where the get arguments actually go
+    // Just append for a get request???
+
+    if (strcmp(type, "GET") == 0)
+    {
+    	/*
+    	# Send a GET request to http://1.1.1.1/form.cgi?fname=jeff&lname=shantz&level=phd
+		$ ./htc -t GET -p name=jeff -p lname=shantz -p level=phd 1.1.1.1 /form.cgi
+		(HTML response displayed)
+		*/
+
+    	char requestBuf[4096];
+
+    	sprintf(requestBuf, "GET %s HTTP/1.1\r\nHOST:http://%s \r\n\r\n", path, serverStr);
+
+    	bool first = true;
+    	for (int i = 0; i < paramsLength; ++i)
+    	{
+    		if (first) {
+    			strcat(requestBuf, "?");
+    			strcat(requestBuf, params[i]);
+    			first = false;
+    		} else {
+    			strcat(requestBuf, "&");
+    			strcat(requestBuf, params[i]);
+    		}
+    	}
+    	msg->length = strlen(requestBuf);
+    	memcpy(msg->buffer, requestBuf, msg->length);
+
+    	printf("Requesting: %s\n", path);
+    }
+    else if (strcmp(type, "POST"))
+    {
+
+    }
 
     // Null strings that we don't need anymore
     // Don't free program args...
@@ -96,26 +136,6 @@ int main(int argc, char **argv) {
     if (serverStr)
     {
         serverStr = NULL;
-    }
-
-    // TODO: Figure out where the get arguments actually go
-    // Just append for a get request???
-
-    if (strcmp(type, "GET") == 0)
-    {
-
-    	/*
-    	# Send a GET request to http://1.1.1.1/form.cgi?fname=jeff&lname=shantz&level=phd
-		$ ./htc -t GET -p name=jeff -p lname=shantz -p level=phd 1.1.1.1 /form.cgi
-		(HTML response displayed)
-		*/
-    	    printf("Requesting: %s\n", argv[1] + (tok - argv[1]));
-    request = malloc( (tok - argv[1]) - strlen(argv[1]) + sizeof(char) * 26 + strlen(host) + 1 );
-    sprintf(request, "GET %s HTTP/1.0\r\nHOST:%s \r\n", argv[1] + (tok - argv[1]), host);
-    }
-    else if (strcmp(type, "POST"))
-    {
-
     }
 
     int chars_sent = 0;
