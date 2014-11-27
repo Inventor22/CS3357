@@ -103,7 +103,7 @@ int main(int argc, char **argv) {
 
     	char requestBuf[4096];
 
-    	sprintf(requestBuf, "GET %s HTTP/1.1\r\nHOST:http://%s \r\n\r\n", path, serverStr);
+    	sprintf(requestBuf, "GET %s HTTP/1.1\r\nHOST:http://%s", path, serverStr);
 
     	bool first = true;
     	for (int i = 0; i < paramsLength; ++i)
@@ -117,6 +117,7 @@ int main(int argc, char **argv) {
     			strcat(requestBuf, params[i]);
     		}
     	}
+    	strcat(requestBuf, "\r\n\r\n");
     	msg->length = strlen(requestBuf);
     	memcpy(msg->buffer, requestBuf, msg->length);
 
