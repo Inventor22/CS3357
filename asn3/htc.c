@@ -21,11 +21,20 @@ int main(int argc, char **argv) {
     char* type = NULL;
     char* path = NULL;
 
+    typedef struct {
+    	char* key;
+    	char* value;
+    } KeyValue;
+
+    KeyValue keyValue[100];
+    int keyValueIndex = 0;
+    int paramsLength = 0;
+
     while (true) {
         static struct option long_options[] =
         {
-            {"type", required_argument, 0, 'p'},
-            {"param", required_argument, 0, 't'},
+            {"type", required_argument, 0, 't'},
+            {"param", required_argument, 0, 'p'},
             {0, 0, 0, 0}
         };
 
@@ -37,29 +46,12 @@ int main(int argc, char **argv) {
 
         switch (c) {
             case 'p':
-                // TODO: Not explicitly check arg names
-                // Get arg name, then value
-                // Maybe use a linked list of strings?
-                *temp = strtok(optarg, "=");
-                if (strcmp(temp, "name") == 0)
-                {
-                    *name = strtok(temp, "=");
-                    syslog(LOG_DEBUG, "name: %s", *name);
-                }
-                else if (strcmp(temp, "lname") == 0)
-                {
-                    *lname = strtok(temp, "=");
-                    syslog(LOG_DEBUG, "lname: %s", *lname);
-                }
-                else if (strcmp(temp, "level") == 0)
-                {
-                    *level = strtok(temp, "=");
-                    syslog(LOG_DEBUG, "level: %s", *level);
-                }
-                else {
-                    syslog(LOG_INFO, "Invalid param");
-                    exit(EXIT_FAILURE);
-                }
+                keyValue[keyValueIndex].key   = strtok(optarg, "=");
+                keyValue[keyValueIndex].value = strtok(optarg, "=");
+                paramsLength += strlen(keyValue[keyValueIndex].key);
+                paramsLength += strlen(keyValue[keyValueIndex].value);
+                paramsLength += 1; // for the '=' operator
+                keyValueIndex++;
                 break;
             case 't':
                 *type = optarg;
@@ -108,6 +100,23 @@ int main(int argc, char **argv) {
 
     // TODO: Figure out where the get arguments actually go
     // Just append for a get request???
+
+    if (strcmp(type, "GET") == 0)
+    {
+
+    	/*
+    	# Send a GET request to http://1.1.1.1/form.cgi?fname=jeff&lname=shantz&level=phd
+		$ ./htc -t GET -p name=jeff -p lname=shantz -p level=phd 1.1.1.1 /form.cgi
+		(HTML response displayed)
+		*/
+    	    printf("Requesting: %s\n", argv[1] + (tok - argv[1]));
+    request = malloc( (tok - argv[1]) - strlen(argv[1]) + sizeof(char) * 26 + strlen(host) + 1 );
+    sprintf(request, "GET %s HTTP/1.0\r\nHOST:%s \r\n", argv[1] + (tok - argv[1]), host);
+    }
+    else if (strcmp(type, "POST"))
+    {
+
+    }
 
     int chars_sent = 0;
     int chars_total = 0;
