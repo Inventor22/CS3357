@@ -103,17 +103,6 @@ int main(int argc, char **argv) {
 		const int sz = 4096;
     	char requestBuf[sz];
 
-		/// Form request
-snprintf(sendline, MAXSUB, 
-     "GET %s HTTP/1.0\r\n"  // POST or GET, both tested and works. Both HTTP 1.0 HTTP 1.1 works, but sometimes 
-     "Host: %s\r\n"     // but sometimes HTTP 1.0 works better in localhost type
-     "Content-type: application/x-www-form-urlencoded\r\n"
-     "Content-length: %d\r\n\r\n"
-     "%s\r\n", page, host, (unsigned int)strlen(poststr), poststr);
-
-
-
-
     	sprintf(requestBuf, "GET %s HTTP/1.1\r\nHOST:http://%s", path, serverStr);
 
     	bool first = true;
